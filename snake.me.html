@@ -3,7 +3,7 @@
 @Date:   2017-01-17 16:01:00
 @Email:  woolson.lee@gmail.com
 @Last modified by:   woolson
-@Last modified time: 2017-01-17 18:01:11
+@Last modified time: 2017-01-18 11:01:44
 -->
 
 <!DOCTYPE html>
@@ -43,7 +43,9 @@
       TOP: 38,
       RIGHT: 39,
       BOTTOM: 40,
-      LEFT: 37
+      LEFT: 37,
+      PAUSE: 80,
+      START: 13,
     }
 
     var Options = {
@@ -59,10 +61,14 @@
 
       // initial game
       this.Init = function() {
-        var SELF = this
-        this.DrawField()
         this.BindEvent()
+        this.DrawField()
+        this.DrawSnake()
         this.DrawFood()
+      }
+
+      this.Start = function() {
+        var SELF = this
 
         this.Gaming = setInterval(function() {
           SELF.Move.call(SELF)
@@ -88,14 +94,15 @@
 
       this.BindEvent = function() {
         try {
-            document.attachEvent("onkeydown", this.MoveSnake.bind(this));
+            document.attachEvent("onkeydown", this.Redirect.bind(this));
         } catch (e) {
-            document.addEventListener("keydown", this.MoveSnake.bind(this), false);
+            document.addEventListener("keydown", this.Redirect.bind(this), false);
         }
       }
 
       // draw the snake
       this.DrawSnake = function() {
+        console.log(this.Snake);
         for(var i = 0; i < this.Snake.length; i++) {
           var id = "item_" + this.Snake[i][0] + "_" + this.Snake[i][1]
           document.getElementById(id).className = "snake"
@@ -103,7 +110,7 @@
       }
 
       this.Move = function() {
-        var x = 1, y = 0
+        var x = 1, y = 0, done = false
 
         switch (this.Dir) {
           case KeyMap.TOP:
@@ -135,6 +142,51 @@
         this.Snake[this.Snake.length - 1][0] += x
         this.Snake[this.Snake.length - 1][1] += y
 
+        for(var j = 0; j < this.Snake.length - 1; j++) {
+          if(
+            this.Snake[j][0] == this.Snake[this.Snake.length - 1][0] &&
+            this.Snake[j][1] == this.Snake[this.Snake.length - 1][1]
+          ) {
+            done = true
+          }
+        }
+
+        if(done) {
+          this.Over = true
+          clearInterval(this.Gaming)
+          this.Restart()
+          alert("游戏结束，菊花好吃么!")
+        }
+
+        if(
+          this.Snake[this.Snake.length - 1][0] == this.Food[0] &&
+          this.Snake[this.Snake.length - 1][1] == this.Food[1]
+        ) {
+          var x = 1, y = 0
+
+          switch (this.Dir) {
+            case KeyMap.TOP:
+              x = -1
+              y = 0
+              break
+            case KeyMap.RIGHT:
+              x = 0
+              y = 1
+              break
+            case KeyMap.BOTTOM:
+              x = 1
+              y = 0
+              break
+            case KeyMap.LEFT:
+              x = 0
+              y = -1
+              break
+          }
+
+          this.Snake.push([this.Food[0] + x, this.Food[1] + y])
+          this.DrawFood()
+        }
+
         if(
           this.Snake[this.Snake.length - 1][0] > 19 ||
           this.Snake[this.Snake.length - 1][1] > 19 ||
@@ -143,16 +195,18 @@
         ) {
           this.Over = true
           clearInterval(this.Gaming)
-          alert("Game Over!!!")
+          this.Restart()
+          alert("游戏结束，不撞南墙不回头!")
         }
       }
 
       // bind key event
-      this.MoveSnake = function(evt) {
+      this.Redirect = function(evt) {
         if((evt.keyCode == KeyMap.TOP && this.Dir == KeyMap.BOTTOM) ||
           (evt.keyCode == KeyMap.RIGHT && this.Dir == KeyMap.LEFT) ||
           (evt.keyCode == KeyMap.BOTTOM && this.Dir == KeyMap.TOP) ||
           (evt.keyCode == KeyMap.LEFT && this.Dir == KeyMap.RIGHT)) return
+
 
         switch(evt.keyCode) {
           case KeyMap.TOP:
@@ -167,19 +221,52 @@
           case KeyMap.LEFT:
             this.Dir = KeyMap.LEFT
             break
+          case KeyMap.PAUSE:
+            clearInterval(this.Gaming)
+            break
+          case KeyMap.START:
+            this.Start()
+            break
         }
       }
 
-      this.Eat = function() {
+      this.Restart = function() {
+        for(var i = 0; i < this.Snake.length; i++) {
+          var id = "item_" + this.Snake[i][0] + "_" + this.Snake[i][1]
+          var item = document.getElementById(id)
+          if(item) item.className = ""
+        }
 
+        this.Snake = [[0, 0], [0, 1]]
+        this.DrawSnake()
       }
 
       // draw foods
       this.DrawFood = function() {
-        var x = Math.floor(Options.WIDTH * Math.random())
-        var y = Math.floor(Options.HEIGHT * Math.random())
-        var id = "item_" + x + "_" + y
+        this.Food = [
+          Math.floor(Options.WIDTH * Math.random()),
+          Math.floor(Options.HEIGHT * Math.random())
+        ]
+
+        while (this.PointExist()) {
+          this.Food = [
+            Math.floor(Options.WIDTH * Math.random()),
+            Math.floor(Options.HEIGHT * Math.random())
+          ]
+        }
+
+        var id = "item_" + this.Food[0] + "_" + this.Food[1]
         document.getElementById(id).className = "food"
+      }
+
+      this.PointExist = function() {
+        var exist = false
+
+        for(i = 0; i < this.Snake.length; i++) {
+          if(this.Snake[i][0] == this.Food[0] && this.Snake[i][1] == this.Food[1]) exist = true
+        }
+
+        return exist
       }
     }
 
